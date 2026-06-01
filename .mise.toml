@@ -1,0 +1,19 @@
+[tools]
+python = "3.14"
+uv = "latest"
+
+[tasks.sync]
+description = "Create or update the uv environment."
+run = "uv sync"
+
+[tasks.check]
+description = "Run lightweight project checks."
+run = "uv run python -m compileall src tests"
+
+[tasks.test]
+description = "Run the standard-library test suite."
+run = "uv run python -m unittest discover -s tests"
+
+[tasks.cli]
+description = "Run the calculator CLI."
+run = "uv run myst-calculator"
