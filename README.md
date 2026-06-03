@@ -27,6 +27,16 @@ Roll type options default to `NORMAL` and accept `NORMAL`, `ADVANTAGE`, or
 uv run myst-calculator opposed 94 76 --type1 ADVANTAGE --type2 NORMAL
 ```
 
+All subcommands accept runner customization options:
+
+```sh
+uv run myst-calculator opposed 94 76 --batch-size 500 --precision 0.001 --seed 123
+```
+
+- `--batch-size` / `--batch_size`: samples to run per batch.
+- `--precision`: maximum running mean change required before the simulation stops.
+- `--seed`: random seed for reproducible simulations.
+
 The command prints the running mean and sample standard deviation:
 
 ```text

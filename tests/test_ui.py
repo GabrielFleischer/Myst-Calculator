@@ -15,7 +15,9 @@ class UiTest(unittest.TestCase):
         result = launch()
 
         self.assertEqual(result, 0)
-        print_mock.assert_called_once_with("Myst Calculator UI is not implemented yet :P")
+        print_mock.assert_called_once_with(
+            "Myst Calculator UI is not implemented yet :P"
+        )
 
 
 if __name__ == "__main__":
