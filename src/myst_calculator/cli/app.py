@@ -10,7 +10,12 @@ from myst_calculator.core.runner import Runner
 
 def parse_positive_int(value: str) -> int:
     """Parse a positive integer command-line value."""
-    parsed = int(value)
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        msg = f"{value!r} is not an integer."
+        raise argparse.ArgumentTypeError(msg) from exc
+
     if parsed <= 0:
         msg = f"{value!r} is not a positive integer."
         raise argparse.ArgumentTypeError(msg)

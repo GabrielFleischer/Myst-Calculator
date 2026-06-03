@@ -3,7 +3,13 @@
 import unittest
 from collections.abc import Iterable
 
-from myst_calculator.core.ability_roll import RollType, roll, roll_on_ability
+from myst_calculator.core.ability_roll import (
+    RollType,
+    opposed_rolls,
+    roll,
+    roll_on_ability,
+)
+from myst_calculator.core.myst import opposed_roll_sampler
 from myst_calculator.core.randomizer import Randomizer
 
 
@@ -70,6 +76,47 @@ class RollOnAbilityTest(unittest.TestCase):
             roll_on_ability(rand, ability=60, roll_type=RollType.ADVANTAGE),
             5,
         )
+
+
+class OpposedRollTest(unittest.TestCase):
+    """Test opposed roll resolution."""
+
+    def test_opposed_rolls_subtract_second_successes_from_first(self) -> None:
+        """Opposed rolls return remaining successes for the first ability."""
+        rand = FixedRandomizer([20, 45])
+
+        self.assertEqual(opposed_rolls(rand, ability1=60, ability2=55), 3)
+
+    def test_opposed_rolls_do_not_return_negative_successes(self) -> None:
+        """Opposed rolls clamp losing results to zero."""
+        rand = FixedRandomizer([70, 10])
+
+        self.assertEqual(opposed_rolls(rand, ability1=40, ability2=80), 0)
+
+    def test_opposed_rolls_support_roll_types_for_both_sides(self) -> None:
+        """Opposed rolls use the configured roll type for each ability."""
+        rand = FixedRandomizer([20, 70, 30, 90])
+
+        self.assertEqual(
+            opposed_rolls(
+                rand,
+                ability1=60,
+                ability2=60,
+                roll_type1=RollType.ADVANTAGE,
+                roll_type2=RollType.DISADVANTAGE,
+            ),
+            5,
+        )
+
+
+class OpposedRollSamplerTest(unittest.TestCase):
+    """Test high-level opposed roll sampler creation."""
+
+    def test_opposed_roll_sampler_returns_float_results(self) -> None:
+        """Opposed roll samplers adapt integer outcomes to float samples."""
+        sampler = opposed_roll_sampler(60, 55)
+
+        self.assertEqual(sampler(FixedRandomizer([20, 45])), 3.0)
 
 
 if __name__ == "__main__":

@@ -1,3 +1,5 @@
+"""Incremental summary statistics."""
+
 from dataclasses import dataclass
 from math import sqrt
 

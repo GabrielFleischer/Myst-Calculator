@@ -8,12 +8,12 @@ run = "uv sync"
 
 [tasks.check]
 description = "Run lightweight project checks."
-run = "uv run python -m compileall src tests"
+run = "uv run black --check src tests && uv run python -m compileall src tests"
+
+[tasks.format]
+description = "Format Python source and test files."
+run = "uv run black src tests"
 
 [tasks.test]
 description = "Run the standard-library test suite."
 run = "uv run python -m unittest discover -s tests"
-
-[tasks.cli]
-description = "Run the calculator CLI."
-run = "uv run myst-calculator"

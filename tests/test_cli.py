@@ -1,6 +1,8 @@
 """Tests for the command-line interface."""
 
 import argparse
+import contextlib
+import io
 import unittest
 from unittest.mock import Mock, patch
 
@@ -24,6 +26,11 @@ class CliParserTest(unittest.TestCase):
         """Positive integer parsing rejects zero."""
         with self.assertRaises(argparse.ArgumentTypeError):
             parse_positive_int("0")
+
+    def test_parse_positive_int_rejects_non_integer_text(self) -> None:
+        """Positive integer parsing rejects text that is not an integer."""
+        with self.assertRaises(argparse.ArgumentTypeError):
+            parse_positive_int("many")
 
     def test_parse_roll_type_accepts_enum_names(self) -> None:
         """Roll type parsing accepts valid enum entry names."""
@@ -68,12 +75,24 @@ class CliParserTest(unittest.TestCase):
         self.assertEqual(args.type1, RollType.ADVANTAGE)
         self.assertEqual(args.type2, RollType.DISADVANTAGE)
 
+    def test_opposed_command_rejects_non_positive_abilities(self) -> None:
+        """The opposed command rejects non-positive abilities."""
+        parser = build_parser()
+
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            parser.parse_args(["opposed", "0", "60"])
+
 
 class CliMainTest(unittest.TestCase):
     """Test command-line execution."""
 
+    @patch("builtins.print")
     @patch("myst_calculator.cli.app.Runner")
-    def test_main_runs_opposed_command(self, runner_class: Mock) -> None:
+    def test_main_runs_opposed_command(
+        self,
+        runner_class: Mock,
+        print_mock: Mock,
+    ) -> None:
         """The opposed command runs through the configured runner."""
         stats = Mock(mean=1.5, sample_std=0.25)
         runner = Mock()
@@ -84,6 +103,8 @@ class CliMainTest(unittest.TestCase):
 
         self.assertEqual(result, 0)
         runner.run.assert_called_once_with()
+        print_mock.assert_any_call("mean=1.5")
+        print_mock.assert_any_call("std=0.25")
 
 
 if __name__ == "__main__":
