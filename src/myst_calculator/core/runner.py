@@ -8,6 +8,7 @@ from myst_calculator.core.randomizer import Randomizer
 from myst_calculator.core.stats import RunningStats
 
 type Sampler = Callable[[Randomizer], float]
+type BatchCallback = Callable[[RunningStats], None]
 
 
 @dataclass(frozen=True)
@@ -45,12 +46,14 @@ class Runner:
             bucket_step=config.bucket_step,
         )
 
-    def run(self) -> RunningStats:
-        """Run batches until the running mean change is within sensitivity."""
+    def run(self, on_batch: BatchCallback | None = None) -> RunningStats:
+        """Run until stable, optionally reporting statistics after each batch."""
         prev_mean = -1
         while fabs(self.stats.mean - prev_mean) > self.config.sensitivity:
             prev_mean = self.stats.mean
             self.run_batch()
+            if on_batch is not None:
+                on_batch(self.stats)
 
         return self.stats
 

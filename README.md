@@ -41,15 +41,23 @@ uv run myst-calculator opposed 94 76 --batch-size 500 --precision 0.001 \
 - `--bucket-step`: width of each bucket (default: `1`).
 
 The command prints each bucket's contribution followed by the running mean and
-sample standard deviation:
+sample standard deviation. While running in a terminal, the display updates
+in place after each batch:
 
 ```text
+=================================================================
              0  72.50% |#############################           |
              1  20.00% |########                                |
              2   7.50% |###                                     |
-mean=...
-std=...
+-----------------------------------------------------------------
+        mean=2.71
+        std=2.83
+=================================================================
 ```
+
+Mean and standard deviation are rounded to the decimal resolution of
+`--precision`. Separators span the terminal width and are never narrower than
+the bucket rows.
 
 ## Development
 

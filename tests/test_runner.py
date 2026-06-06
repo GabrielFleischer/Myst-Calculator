@@ -34,6 +34,18 @@ class RunnerTest(unittest.TestCase):
         self.assertEqual(stats.mean, 1.0)
         self.assertEqual(stats.count, 4)
 
+    def test_run_reports_stats_after_each_batch(self) -> None:
+        """Running invokes the batch callback with updated statistics."""
+        observed_counts: list[int] = []
+        runner = Runner(
+            sampler=lambda _rand: 1.0,
+            config=RunnerConfig(seed=1, batch_size=2),
+        )
+
+        runner.run(on_batch=lambda stats: observed_counts.append(stats.count))
+
+        self.assertEqual(observed_counts, [2, 4])
+
     def test_runner_passes_seeded_randomizer_to_sampler(self) -> None:
         """Runner samplers receive the runner randomizer."""
         seen: list[Randomizer] = []

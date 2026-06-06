@@ -3,17 +3,22 @@
 import argparse
 import contextlib
 import io
+import os
 import unittest
 from unittest.mock import Mock, patch
 
 from myst_calculator.cli.app import (
+    ResultRenderer,
+    BUCKET_LINE_WIDTH,
     build_parser,
     build_runner_config,
+    format_results,
     main,
     parse_positive_float,
     parse_positive_int,
     parse_roll_type,
-    print_results,
+    precision_decimal_places,
+    terminal_width,
 )
 from myst_calculator.core.ability_roll import RollType
 from myst_calculator.core.runner import RunnerConfig
@@ -184,53 +189,140 @@ class CliParserTest(unittest.TestCase):
         self.assertEqual(config.bucket_start, 0.5)
         self.assertEqual(config.bucket_step, 2.0)
 
-    @patch("builtins.print")
-    def test_print_results_shows_bucket_contributions(
-        self,
-        print_mock: Mock,
-    ) -> None:
-        """Result output includes percentages and fixed-width contribution bars."""
+    def test_format_results_shows_bucket_contributions(self) -> None:
+        """Formatted results include percentages and contribution bars."""
         stats = RunningStats()
         for value in [0.0, 0.0, 1.0, 3.0]:
             stats.add(value)
 
-        print_results(stats)
+        lines = format_results(stats)
 
         self.assertEqual(
-            print_mock.call_args_list[:4],
-            [
-                unittest.mock.call(
-                    "             0  50.00% |####################                    |"
-                ),
-                unittest.mock.call(
-                    "             1  25.00% |##########                              |"
-                ),
-                unittest.mock.call(
-                    "             2   0.00% |                                        |"
-                ),
-                unittest.mock.call(
-                    "             3  25.00% |##########                              |"
-                ),
-            ],
+            lines[:5],
+            (
+                "=" * BUCKET_LINE_WIDTH,
+                "             0  50.00% |####################                    |",
+                "             1  25.00% |##########                              |",
+                "             2   0.00% |                                        |",
+                "             3  25.00% |##########                              |",
+            ),
+        )
+
+    def test_precision_decimal_places_uses_precision_resolution(self) -> None:
+        """Precision values map to their normalized decimal resolution."""
+        self.assertEqual(precision_decimal_places(1.0), 0)
+        self.assertEqual(precision_decimal_places(0.01), 2)
+        self.assertEqual(precision_decimal_places(0.0001), 4)
+
+    def test_format_results_rounds_stats_to_precision(self) -> None:
+        """Mean and standard deviation use the precision's decimal places."""
+        stats = RunningStats()
+        stats.add(1.25)
+        stats.add(1.75)
+
+        lines = format_results(stats, precision=0.01)
+
+        self.assertEqual(
+            lines[-4:],
+            (
+                "-" * BUCKET_LINE_WIDTH,
+                "        mean=1.50",
+                "        std=0.35",
+                "=" * BUCKET_LINE_WIDTH,
+            ),
+        )
+
+    def test_format_results_uses_requested_frame_width(self) -> None:
+        """Separators span the requested width when wider than bucket rows."""
+        stats = RunningStats()
+        stats.add(0.0)
+
+        lines = format_results(stats, width=100)
+
+        self.assertEqual(lines[0], "=" * 100)
+        self.assertEqual(lines[-4], "-" * 100)
+        self.assertEqual(lines[-1], "=" * 100)
+
+    def test_format_results_does_not_shrink_below_bucket_width(self) -> None:
+        """Separators remain wide enough to contain a complete bucket row."""
+        stats = RunningStats()
+        stats.add(0.0)
+
+        lines = format_results(stats, width=20)
+
+        self.assertEqual(len(lines[0]), BUCKET_LINE_WIDTH)
+        self.assertEqual(len(lines[-4]), BUCKET_LINE_WIDTH)
+
+    @patch("myst_calculator.cli.app.os.get_terminal_size")
+    def test_terminal_width_uses_terminal_columns(self, get_size: Mock) -> None:
+        """Terminal width uses the stream's current terminal dimensions."""
+        stream = Mock()
+        stream.fileno.return_value = 7
+        get_size.return_value = os.terminal_size((120, 40))
+
+        self.assertEqual(terminal_width(stream), 120)
+        get_size.assert_called_once_with(7)
+
+    def test_interactive_renderer_replaces_previous_frame(self) -> None:
+        """Interactive updates clear and replace the previously rendered lines."""
+        stream = io.StringIO()
+        renderer = ResultRenderer(stream, interactive=True, precision=0.01)
+        stats = RunningStats()
+        stats.add(0.0)
+
+        renderer.update(stats)
+        first_frame_line_count = len(format_results(stats, precision=0.01))
+        stats.add(1.0)
+        renderer.update(stats)
+
+        output = stream.getvalue()
+        self.assertIn(f"\x1b[{first_frame_line_count}F", output)
+        self.assertEqual(output.count("\x1b[2K"), first_frame_line_count)
+        self.assertTrue(
+            output.endswith("\n".join(format_results(stats, precision=0.01)) + "\n")
+        )
+
+    def test_non_interactive_renderer_writes_only_final_results(self) -> None:
+        """Redirected output receives one final frame without terminal controls."""
+        stream = io.StringIO()
+        renderer = ResultRenderer(stream, interactive=False, precision=0.01)
+        stats = RunningStats()
+        stats.add(0.0)
+        renderer.update(stats)
+        stats.add(1.0)
+        renderer.update(stats)
+
+        self.assertEqual(stream.getvalue(), "")
+
+        renderer.finish()
+
+        self.assertEqual(
+            stream.getvalue(),
+            "\n".join(format_results(stats, precision=0.01)) + "\n",
         )
 
 
 class CliMainTest(unittest.TestCase):
     """Test command-line execution."""
 
-    @patch("builtins.print")
+    @patch("myst_calculator.cli.app.sys.stdout", new_callable=io.StringIO)
     @patch("myst_calculator.cli.app.Runner")
     def test_main_runs_opposed_command(
         self,
         runner_class: Mock,
-        print_mock: Mock,
+        stdout: io.StringIO,
     ) -> None:
         """The opposed command runs through the configured runner."""
         stats = RunningStats()
         stats.add(1.25)
         stats.add(1.75)
         runner = Mock()
-        runner.run.return_value = stats
+
+        def run(on_batch: object) -> RunningStats:
+            on_batch(stats)
+            return stats
+
+        runner.run.side_effect = run
         runner_class.return_value = runner
 
         result = main(
@@ -258,9 +350,9 @@ class CliMainTest(unittest.TestCase):
         self.assertEqual(config.seed, 123)
         self.assertEqual(config.bucket_start, 0.5)
         self.assertEqual(config.bucket_step, 2.0)
-        runner.run.assert_called_once_with()
-        print_mock.assert_any_call("mean=1.5")
-        print_mock.assert_any_call("std=0.3535533905932738")
+        runner.run.assert_called_once()
+        self.assertIn("        mean=1.50", stdout.getvalue())
+        self.assertIn("        std=0.35", stdout.getvalue())
 
 
 if __name__ == "__main__":
