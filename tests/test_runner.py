@@ -47,6 +47,16 @@ class RunnerTest(unittest.TestCase):
         self.assertEqual(seen, [runner.randomizer])
         self.assertEqual(runner.randomizer.seed, 99)
 
+    def test_runner_configures_result_buckets(self) -> None:
+        """Runner statistics use the configured bucket boundaries."""
+        runner = Runner(
+            sampler=lambda _rand: 2.0,
+            config=RunnerConfig(bucket_start=1.0, bucket_step=0.5),
+        )
+
+        self.assertEqual(runner.stats.bucket_start, 1.0)
+        self.assertEqual(runner.stats.bucket_step, 0.5)
+
 
 if __name__ == "__main__":
     unittest.main()

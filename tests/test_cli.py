@@ -7,15 +7,17 @@ import unittest
 from unittest.mock import Mock, patch
 
 from myst_calculator.cli.app import (
-    build_runner_config,
     build_parser,
+    build_runner_config,
     main,
     parse_positive_float,
     parse_positive_int,
     parse_roll_type,
+    print_results,
 )
 from myst_calculator.core.ability_roll import RollType
 from myst_calculator.core.runner import RunnerConfig
+from myst_calculator.core.stats import RunningStats
 
 
 class CliParserTest(unittest.TestCase):
@@ -75,6 +77,8 @@ class CliParserTest(unittest.TestCase):
         self.assertEqual(args.batch_size, RunnerConfig.batch_size)
         self.assertEqual(args.precision, RunnerConfig.sensitivity)
         self.assertIsNone(args.seed)
+        self.assertEqual(args.bucket_start, RunnerConfig.bucket_start)
+        self.assertEqual(args.bucket_step, RunnerConfig.bucket_step)
 
     def test_opposed_command_accepts_roll_type_options(self) -> None:
         """The opposed command accepts both optional roll type arguments."""
@@ -110,12 +114,18 @@ class CliParserTest(unittest.TestCase):
                 "0.01",
                 "--seed",
                 "123",
+                "--bucket-start",
+                "0.5",
+                "--bucket-step",
+                "2",
             ]
         )
 
         self.assertEqual(args.batch_size, 500)
         self.assertEqual(args.precision, 0.01)
         self.assertEqual(args.seed, 123)
+        self.assertEqual(args.bucket_start, 0.5)
+        self.assertEqual(args.bucket_step, 2.0)
 
     def test_opposed_command_rejects_non_positive_abilities(self) -> None:
         """The opposed command rejects non-positive abilities."""
@@ -138,6 +148,13 @@ class CliParserTest(unittest.TestCase):
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             parser.parse_args(["opposed", "40", "60", "--precision", "0"])
 
+    def test_opposed_command_rejects_non_positive_bucket_step(self) -> None:
+        """The opposed command rejects non-positive bucket widths."""
+        parser = build_parser()
+
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            parser.parse_args(["opposed", "40", "60", "--bucket-step", "0"])
+
     def test_build_runner_config_uses_shared_options(self) -> None:
         """Runner configuration is built from shared CLI options."""
         parser = build_parser()
@@ -152,6 +169,10 @@ class CliParserTest(unittest.TestCase):
                 "0.01",
                 "--seed",
                 "123",
+                "--bucket-start",
+                "0.5",
+                "--bucket-step",
+                "2",
             ]
         )
 
@@ -160,6 +181,38 @@ class CliParserTest(unittest.TestCase):
         self.assertEqual(config.batch_size, 500)
         self.assertEqual(config.sensitivity, 0.01)
         self.assertEqual(config.seed, 123)
+        self.assertEqual(config.bucket_start, 0.5)
+        self.assertEqual(config.bucket_step, 2.0)
+
+    @patch("builtins.print")
+    def test_print_results_shows_bucket_contributions(
+        self,
+        print_mock: Mock,
+    ) -> None:
+        """Result output includes percentages and fixed-width contribution bars."""
+        stats = RunningStats()
+        for value in [0.0, 0.0, 1.0, 3.0]:
+            stats.add(value)
+
+        print_results(stats)
+
+        self.assertEqual(
+            print_mock.call_args_list[:4],
+            [
+                unittest.mock.call(
+                    "             0  50.00% |####################                    |"
+                ),
+                unittest.mock.call(
+                    "             1  25.00% |##########                              |"
+                ),
+                unittest.mock.call(
+                    "             2   0.00% |                                        |"
+                ),
+                unittest.mock.call(
+                    "             3  25.00% |##########                              |"
+                ),
+            ],
+        )
 
 
 class CliMainTest(unittest.TestCase):
@@ -173,7 +226,9 @@ class CliMainTest(unittest.TestCase):
         print_mock: Mock,
     ) -> None:
         """The opposed command runs through the configured runner."""
-        stats = Mock(mean=1.5, sample_std=0.25)
+        stats = RunningStats()
+        stats.add(1.25)
+        stats.add(1.75)
         runner = Mock()
         runner.run.return_value = stats
         runner_class.return_value = runner
@@ -189,6 +244,10 @@ class CliMainTest(unittest.TestCase):
                 "0.01",
                 "--seed",
                 "123",
+                "--bucket-start",
+                "0.5",
+                "--bucket-step",
+                "2",
             ]
         )
 
@@ -197,9 +256,11 @@ class CliMainTest(unittest.TestCase):
         self.assertEqual(config.batch_size, 500)
         self.assertEqual(config.sensitivity, 0.01)
         self.assertEqual(config.seed, 123)
+        self.assertEqual(config.bucket_start, 0.5)
+        self.assertEqual(config.bucket_step, 2.0)
         runner.run.assert_called_once_with()
         print_mock.assert_any_call("mean=1.5")
-        print_mock.assert_any_call("std=0.25")
+        print_mock.assert_any_call("std=0.3535533905932738")
 
 
 if __name__ == "__main__":

@@ -17,6 +17,8 @@ class RunnerConfig:
     seed: Optional[int] = None
     batch_size: int = 1000
     sensitivity: float = 0.0000001
+    bucket_start: float = 0.0
+    bucket_step: float = 1.0
 
 
 @dataclass
@@ -38,7 +40,10 @@ class Runner:
         self.randomizer = Randomizer(config.seed)
         self.config = config
         self.sampler = sampler
-        self.stats = RunningStats()
+        self.stats = RunningStats(
+            bucket_start=config.bucket_start,
+            bucket_step=config.bucket_step,
+        )
 
     def run(self) -> RunningStats:
         """Run batches until the running mean change is within sensitivity."""

@@ -39,6 +39,45 @@ class RunningStatsTest(unittest.TestCase):
         self.assertEqual(stats.sample_variance, 1.0)
         self.assertEqual(stats.sample_std, 1.0)
 
+    def test_add_tracks_default_result_buckets(self) -> None:
+        """Values are grouped into unit-width buckets starting at zero."""
+        stats = RunningStats()
+
+        for value in [0.0, 0.9, 1.0, 2.5]:
+            stats.add(value)
+
+        self.assertEqual(
+            [
+                (bucket.lower_bound, bucket.upper_bound, bucket.count)
+                for bucket in stats.buckets
+            ],
+            [
+                (0.0, 1.0, 2),
+                (1.0, 2.0, 1),
+                (2.0, 3.0, 1),
+            ],
+        )
+
+    def test_buckets_use_custom_start_and_step(self) -> None:
+        """Bucket boundaries use the configured start and step."""
+        stats = RunningStats(bucket_start=1.0, bucket_step=0.5)
+
+        for value in [0.75, 1.0, 2.1]:
+            stats.add(value)
+
+        self.assertEqual(
+            [
+                (bucket.lower_bound, bucket.upper_bound, bucket.count)
+                for bucket in stats.buckets
+            ],
+            [
+                (0.5, 1.0, 1),
+                (1.0, 1.5, 1),
+                (1.5, 2.0, 0),
+                (2.0, 2.5, 1),
+            ],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

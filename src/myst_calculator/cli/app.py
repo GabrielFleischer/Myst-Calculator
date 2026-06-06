@@ -6,6 +6,9 @@ from collections.abc import Sequence
 from myst_calculator.core.ability_roll import RollType
 from myst_calculator.core.myst import opposed_roll_sampler
 from myst_calculator.core.runner import Runner, RunnerConfig
+from myst_calculator.core.stats import RunningStats
+
+RESULT_BAR_WIDTH = 40
 
 
 def parse_positive_int(value: str) -> int:
@@ -52,7 +55,27 @@ def build_runner_config(args: argparse.Namespace) -> RunnerConfig:
         seed=args.seed,
         batch_size=args.batch_size,
         sensitivity=args.precision,
+        bucket_start=args.bucket_start,
+        bucket_step=args.bucket_step,
     )
+
+
+def format_number(value: float) -> str:
+    """Format a bucket boundary without unnecessary trailing zeroes."""
+    return f"{value:g}"
+
+
+def print_results(stats: RunningStats) -> None:
+    """Print bucket contributions and summary statistics."""
+    for bucket in stats.buckets:
+        contribution = bucket.count / stats.count
+        filled_width = round(contribution * RESULT_BAR_WIDTH)
+        bar = "#" * filled_width + " " * (RESULT_BAR_WIDTH - filled_width)
+        label = format_number(bucket.lower_bound)
+        print(f"{label:>14} {contribution:7.2%} |{bar}|")
+
+    print(f"mean={stats.mean}")
+    print(f"std={stats.sample_std}")
 
 
 def run_opposed(args: argparse.Namespace) -> int:
@@ -64,8 +87,7 @@ def run_opposed(args: argparse.Namespace) -> int:
         args.type2,
     )
     stats = Runner(sampler, config=build_runner_config(args)).run()
-    print(f"mean={stats.mean}")
-    print(f"std={stats.sample_std}")
+    print_results(stats)
     return 0
 
 
@@ -91,6 +113,18 @@ def build_runner_options_parser() -> argparse.ArgumentParser:
         type=int,
         default=RunnerConfig.seed,
         help="Random seed for reproducible simulations.",
+    )
+    parser.add_argument(
+        "--bucket-start",
+        type=float,
+        default=RunnerConfig.bucket_start,
+        help="Boundary from which result buckets are calculated.",
+    )
+    parser.add_argument(
+        "--bucket-step",
+        type=parse_positive_float,
+        default=RunnerConfig.bucket_step,
+        help="Width of each result bucket.",
     )
     return parser
 

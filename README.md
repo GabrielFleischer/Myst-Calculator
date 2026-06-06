@@ -27,19 +27,26 @@ Roll type options default to `NORMAL` and accept `NORMAL`, `ADVANTAGE`, or
 uv run myst-calculator opposed 94 76 --type1 ADVANTAGE --type2 NORMAL
 ```
 
-All subcommands accept runner customization options:
+All subcommands accept runner and bucket customization options:
 
 ```sh
-uv run myst-calculator opposed 94 76 --batch-size 500 --precision 0.001 --seed 123
+uv run myst-calculator opposed 94 76 --batch-size 500 --precision 0.001 \
+  --seed 123 --bucket-start 0 --bucket-step 1
 ```
 
 - `--batch-size` / `--batch_size`: samples to run per batch.
 - `--precision`: maximum running mean change required before the simulation stops.
 - `--seed`: random seed for reproducible simulations.
+- `--bucket-start`: boundary from which buckets are calculated (default: `0`).
+- `--bucket-step`: width of each bucket (default: `1`).
 
-The command prints the running mean and sample standard deviation:
+The command prints each bucket's contribution followed by the running mean and
+sample standard deviation:
 
 ```text
+             0  72.50% |#############################           |
+             1  20.00% |########                                |
+             2   7.50% |###                                     |
 mean=...
 std=...
 ```
