@@ -105,7 +105,7 @@ class CliParserTest(unittest.TestCase):
         self.assertEqual(args.type2, RollType.DISADVANTAGE)
 
     def test_opposed_command_accepts_shared_runner_options(self) -> None:
-        """The opposed command accepts options shared by all subcommands."""
+        """Runner options are accepted after the subcommand."""
         parser = build_parser()
 
         args = parser.parse_args(
@@ -131,6 +131,57 @@ class CliParserTest(unittest.TestCase):
         self.assertEqual(args.seed, 123)
         self.assertEqual(args.bucket_start, 0.5)
         self.assertEqual(args.bucket_step, 2.0)
+
+    def test_opposed_command_accepts_runner_options_before_subcommand(self) -> None:
+        """Runner options are accepted before the subcommand."""
+        parser = build_parser()
+
+        args = parser.parse_args(
+            [
+                "--batch-size",
+                "500",
+                "--precision",
+                "0.01",
+                "--seed",
+                "123",
+                "--bucket-start",
+                "0.5",
+                "--bucket-step",
+                "2",
+                "opposed",
+                "40",
+                "60",
+            ]
+        )
+
+        self.assertEqual(args.batch_size, 500)
+        self.assertEqual(args.precision, 0.01)
+        self.assertEqual(args.seed, 123)
+        self.assertEqual(args.bucket_start, 0.5)
+        self.assertEqual(args.bucket_step, 2.0)
+
+    def test_runner_options_after_subcommand_override_global_values(self) -> None:
+        """Subcommand runner options override values provided globally."""
+        parser = build_parser()
+
+        args = parser.parse_args(
+            [
+                "--batch-size",
+                "500",
+                "--precision",
+                "0.01",
+                "opposed",
+                "40",
+                "60",
+                "--batch-size",
+                "250",
+                "--precision",
+                "0.1",
+            ]
+        )
+
+        self.assertEqual(args.batch_size, 250)
+        self.assertEqual(args.precision, 0.1)
 
     def test_opposed_command_rejects_non_positive_abilities(self) -> None:
         """The opposed command rejects non-positive abilities."""

@@ -27,11 +27,14 @@ Roll type options default to `NORMAL` and accept `NORMAL`, `ADVANTAGE`, or
 uv run myst-calculator opposed 94 76 --type1 ADVANTAGE --type2 NORMAL
 ```
 
-All subcommands accept runner and bucket customization options:
+Runner and bucket customization options can be provided before or after the
+subcommand:
 
 ```sh
-uv run myst-calculator opposed 94 76 --batch-size 500 --precision 0.001 \
-  --seed 123 --bucket-start 0 --bucket-step 1
+uv run myst-calculator --batch-size 500 --precision 0.001 --seed 123 \
+  --bucket-start 0 --bucket-step 1 opposed 94 76
+
+uv run myst-calculator opposed 94 76 --batch-size 500 --precision 0.001
 ```
 
 - `--batch-size` / `--batch_size`: samples to run per batch.

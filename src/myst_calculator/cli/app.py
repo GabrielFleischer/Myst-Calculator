@@ -186,39 +186,42 @@ def run_opposed(args: argparse.Namespace) -> int:
     return 0
 
 
-def build_runner_options_parser() -> argparse.ArgumentParser:
+def build_runner_options_parser(
+    suppress_defaults: bool = False,
+) -> argparse.ArgumentParser:
     """Build the shared parser for runner customization options."""
     parser = argparse.ArgumentParser(add_help=False)
+    default = argparse.SUPPRESS if suppress_defaults else None
     parser.add_argument(
         "--batch-size",
         "--batch_size",
         dest="batch_size",
         type=parse_positive_int,
-        default=RunnerConfig.batch_size,
+        default=default if suppress_defaults else RunnerConfig.batch_size,
         help="Number of samples to run per batch.",
     )
     parser.add_argument(
         "--precision",
         type=parse_positive_float,
-        default=RunnerConfig.sensitivity,
+        default=default if suppress_defaults else RunnerConfig.sensitivity,
         help="Maximum mean change required to stop the runner.",
     )
     parser.add_argument(
         "--seed",
         type=int,
-        default=RunnerConfig.seed,
+        default=default if suppress_defaults else RunnerConfig.seed,
         help="Random seed for reproducible simulations.",
     )
     parser.add_argument(
         "--bucket-start",
         type=float,
-        default=RunnerConfig.bucket_start,
+        default=default if suppress_defaults else RunnerConfig.bucket_start,
         help="Boundary from which result buckets are calculated.",
     )
     parser.add_argument(
         "--bucket-step",
         type=parse_positive_float,
-        default=RunnerConfig.bucket_step,
+        default=default if suppress_defaults else RunnerConfig.bucket_step,
         help="Width of each result bucket.",
     )
     return parser
@@ -226,13 +229,17 @@ def build_runner_options_parser() -> argparse.ArgumentParser:
 
 def build_parser() -> argparse.ArgumentParser:
     """Build the command-line argument parser."""
-    parser = argparse.ArgumentParser(prog="myst-calculator")
+    global_runner_options = build_runner_options_parser()
+    parser = argparse.ArgumentParser(
+        prog="myst-calculator",
+        parents=[global_runner_options],
+    )
     subparsers = parser.add_subparsers(dest="command", required=True)
-    runner_options = build_runner_options_parser()
+    subcommand_runner_options = build_runner_options_parser(suppress_defaults=True)
 
     opposed_parser = subparsers.add_parser(
         "opposed",
-        parents=[runner_options],
+        parents=[subcommand_runner_options],
         help="Run an opposed ability roll simulation.",
     )
     opposed_parser.add_argument("ability1", type=parse_positive_int)
