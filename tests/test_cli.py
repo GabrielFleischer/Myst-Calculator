@@ -356,6 +356,14 @@ class CliParserTest(unittest.TestCase):
 class CliMainTest(unittest.TestCase):
     """Test command-line execution."""
 
+    @patch("myst_calculator.ui.launch", return_value=0)
+    def test_main_launches_ui_without_arguments(self, launch: Mock) -> None:
+        """An argument-free invocation launches the desktop interface."""
+        result = main([])
+
+        self.assertEqual(result, 0)
+        launch.assert_called_once_with()
+
     @patch("myst_calculator.cli.app.sys.stdout", new_callable=io.StringIO)
     @patch("myst_calculator.cli.app.Runner")
     def test_main_runs_opposed_command(

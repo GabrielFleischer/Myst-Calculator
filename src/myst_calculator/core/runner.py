@@ -9,6 +9,7 @@ from myst_calculator.core.stats import RunningStats
 
 type Sampler = Callable[[Randomizer], float]
 type BatchCallback = Callable[[RunningStats], None]
+type CancellationCheck = Callable[[], bool]
 
 
 @dataclass(frozen=True)
@@ -46,10 +47,16 @@ class Runner:
             bucket_step=config.bucket_step,
         )
 
-    def run(self, on_batch: BatchCallback | None = None) -> RunningStats:
-        """Run until stable, optionally reporting statistics after each batch."""
+    def run(
+        self,
+        on_batch: BatchCallback | None = None,
+        should_cancel: CancellationCheck | None = None,
+    ) -> RunningStats:
+        """Run until stable or cancelled, reporting after completed batches."""
         prev_mean = -1
         while fabs(self.stats.mean - prev_mean) > self.config.sensitivity:
+            if should_cancel is not None and should_cancel():
+                break
             prev_mean = self.stats.mean
             self.run_batch()
             if on_batch is not None:

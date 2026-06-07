@@ -46,6 +46,22 @@ class RunnerTest(unittest.TestCase):
 
         self.assertEqual(observed_counts, [2, 4])
 
+    def test_run_cancels_between_batches(self) -> None:
+        """Cancellation stops the runner before starting another batch."""
+        observed_counts: list[int] = []
+        runner = Runner(
+            sampler=lambda _rand: 1.0,
+            config=RunnerConfig(seed=1, batch_size=2),
+        )
+
+        stats = runner.run(
+            on_batch=lambda current: observed_counts.append(current.count),
+            should_cancel=lambda: runner.stats.count >= 2,
+        )
+
+        self.assertEqual(stats.count, 2)
+        self.assertEqual(observed_counts, [2])
+
     def test_runner_passes_seeded_randomizer_to_sampler(self) -> None:
         """Runner samplers receive the runner randomizer."""
         seen: list[Randomizer] = []

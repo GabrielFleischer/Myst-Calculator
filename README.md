@@ -12,6 +12,18 @@ mise run sync
 The project uses `uv` for packaging and dependency management, and `mise` for
 local task aliases.
 
+## Desktop UI
+
+Launch the tabbed Tkinter interface by running the command without arguments:
+
+```sh
+uv run myst-calculator
+```
+
+The Opposed Roll tab exposes scenario, runner, and bucket settings. Simulations
+run in the background, update a histogram after each batch, and can be
+cancelled. Additional scenarios can be added as notebook tabs.
+
 ## CLI
 
 Run an opposed roll simulation:
