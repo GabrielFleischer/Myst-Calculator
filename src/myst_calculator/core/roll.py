@@ -1,7 +1,7 @@
 """Ability roll rules for Myst Calculator."""
 
 from enum import Enum
-from math import floor
+from math import ceil, floor
 
 from myst_calculator.core.randomizer import Randomizer
 
@@ -48,3 +48,20 @@ def opposed_rolls(
     successes2 = max(0, roll_on_ability(rand, ability2, roll_type2))
 
     return max(0, successes1 - successes2)
+
+
+def damage_roll(
+    rand: Randomizer, dice: int, dice_bonus: int, flat_dmg: int, successes: int
+) -> int:
+    """Return the damage roll for a given dice and successes."""
+    if successes <= 0:
+        # Failure
+        return 0
+
+    multiplier = ceil(successes / 2)
+
+    total = flat_dmg
+    for _ in range(multiplier):
+        total += rand.next_number(0, dice + 1) + dice_bonus
+
+    return total

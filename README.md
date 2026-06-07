@@ -32,6 +32,16 @@ Run an opposed roll simulation:
 uv run myst-calculator opposed 94 76
 ```
 
+Run an attack action damage simulation:
+
+```sh
+uv run myst-calculator attack 70 55 8 1 3 \
+  --attack-roll-type ADVANTAGE --defense-roll-type NORMAL
+```
+
+The positional attack parameters are `attack`, `defense`, damage die size,
+per-die bonus, and flat damage.
+
 Roll type options default to `NORMAL` and accept `NORMAL`, `ADVANTAGE`, or
 `DISADVANTAGE`:
 

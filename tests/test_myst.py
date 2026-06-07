@@ -3,13 +3,13 @@
 import unittest
 from collections.abc import Iterable
 
-from myst_calculator.core.ability_roll import (
+from myst_calculator.core.roll import (
     RollType,
     opposed_rolls,
     roll,
     roll_on_ability,
 )
-from myst_calculator.core.myst import opposed_roll_sampler
+from myst_calculator.core.myst import attack_action_sampler, opposed_roll_sampler
 from myst_calculator.core.randomizer import Randomizer
 
 
@@ -117,6 +117,25 @@ class OpposedRollSamplerTest(unittest.TestCase):
         sampler = opposed_roll_sampler(60, 55)
 
         self.assertEqual(sampler(FixedRandomizer([20, 45])), 3.0)
+
+
+class AttackActionSamplerTest(unittest.TestCase):
+    """Test high-level attack action sampler creation."""
+
+    def test_attack_action_sampler_returns_damage_as_float(self) -> None:
+        """Attack samplers combine opposed successes with damage rolls."""
+        sampler = attack_action_sampler(
+            attack=60,
+            defense=20,
+            dice=6,
+            dice_bonus=1,
+            flat_dmg=2,
+        )
+
+        self.assertEqual(
+            sampler(FixedRandomizer([10, 90, 4, 5, 6])),
+            20.0,
+        )
 
 
 if __name__ == "__main__":

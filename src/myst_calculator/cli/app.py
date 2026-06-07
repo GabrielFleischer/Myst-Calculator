@@ -7,8 +7,8 @@ from collections.abc import Sequence
 from decimal import Decimal
 from typing import TextIO
 
-from myst_calculator.core.ability_roll import RollType
-from myst_calculator.core.myst import opposed_roll_sampler
+from myst_calculator.core.roll import RollType
+from myst_calculator.core.myst import attack_action_sampler, opposed_roll_sampler
 from myst_calculator.core.runner import Runner, RunnerConfig
 from myst_calculator.core.stats import RunningStats
 
@@ -186,6 +186,23 @@ def run_opposed(args: argparse.Namespace) -> int:
     return 0
 
 
+def run_attack(args: argparse.Namespace) -> int:
+    """Run an attack action simulation."""
+    sampler = attack_action_sampler(
+        args.attack,
+        args.defense,
+        args.dice,
+        args.dice_bonus,
+        args.flat_dmg,
+        args.attack_roll_type,
+        args.defense_roll_type,
+    )
+    renderer = ResultRenderer.for_stream(sys.stdout, args.precision)
+    Runner(sampler, config=build_runner_config(args)).run(on_batch=renderer.update)
+    renderer.finish()
+    return 0
+
+
 def build_runner_options_parser(
     suppress_defaults: bool = False,
 ) -> argparse.ArgumentParser:
@@ -251,6 +268,32 @@ def build_parser() -> argparse.ArgumentParser:
         "--type2", type=parse_roll_type, default=RollType.NORMAL
     )
     opposed_parser.set_defaults(handler=run_opposed)
+
+    attack_parser = subparsers.add_parser(
+        "attack",
+        parents=[subcommand_runner_options],
+        help="Run an attack action damage simulation.",
+    )
+    attack_parser.add_argument("attack", type=parse_positive_int)
+    attack_parser.add_argument("defense", type=parse_positive_int)
+    attack_parser.add_argument("dice", type=parse_positive_int)
+    attack_parser.add_argument("dice_bonus", type=int)
+    attack_parser.add_argument("flat_dmg", type=int)
+    attack_parser.add_argument(
+        "--attack-roll-type",
+        "--attack-type",
+        dest="attack_roll_type",
+        type=parse_roll_type,
+        default=RollType.NORMAL,
+    )
+    attack_parser.add_argument(
+        "--defense-roll-type",
+        "--defense-type",
+        dest="defense_roll_type",
+        type=parse_roll_type,
+        default=RollType.NORMAL,
+    )
+    attack_parser.set_defaults(handler=run_attack)
 
     return parser
 

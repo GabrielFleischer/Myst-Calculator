@@ -25,11 +25,21 @@ class UiTest(unittest.TestCase):
         """Closing the app requests tab shutdown before destroying the window."""
         app = Mock()
         app._opposed_tab = Mock()
+        app._attack_tab = Mock()
 
         MystCalculatorApp.close(app)
 
         app._opposed_tab.shutdown.assert_called_once_with()
+        app._attack_tab.shutdown.assert_called_once_with()
         app.destroy.assert_called_once_with()
+
+    def test_escape_leaves_fullscreen_mode(self) -> None:
+        """Escape disables fullscreen without closing the application."""
+        app = Mock()
+
+        MystCalculatorApp.exit_fullscreen(app)
+
+        app.attributes.assert_called_once_with("-fullscreen", False)
 
 
 if __name__ == "__main__":

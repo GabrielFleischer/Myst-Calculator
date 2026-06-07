@@ -20,7 +20,7 @@ from myst_calculator.cli.app import (
     precision_decimal_places,
     terminal_width,
 )
-from myst_calculator.core.ability_roll import RollType
+from myst_calculator.core.roll import RollType
 from myst_calculator.core.runner import RunnerConfig
 from myst_calculator.core.stats import RunningStats
 
@@ -103,6 +103,49 @@ class CliParserTest(unittest.TestCase):
 
         self.assertEqual(args.type1, RollType.ADVANTAGE)
         self.assertEqual(args.type2, RollType.DISADVANTAGE)
+
+    def test_attack_command_accepts_all_sampler_parameters(self) -> None:
+        """The attack command exposes every attack sampler parameter."""
+        parser = build_parser()
+
+        args = parser.parse_args(
+            [
+                "attack",
+                "70",
+                "55",
+                "8",
+                "-1",
+                "3",
+                "--attack-roll-type",
+                "ADVANTAGE",
+                "--defense-roll-type",
+                "DISADVANTAGE",
+            ]
+        )
+
+        self.assertEqual(args.attack, 70)
+        self.assertEqual(args.defense, 55)
+        self.assertEqual(args.dice, 8)
+        self.assertEqual(args.dice_bonus, -1)
+        self.assertEqual(args.flat_dmg, 3)
+        self.assertEqual(args.attack_roll_type, RollType.ADVANTAGE)
+        self.assertEqual(args.defense_roll_type, RollType.DISADVANTAGE)
+
+    def test_attack_command_defaults_roll_types_to_normal(self) -> None:
+        """The attack command defaults both roll types to normal."""
+        parser = build_parser()
+
+        args = parser.parse_args(["attack", "70", "55", "8", "1", "3"])
+
+        self.assertEqual(args.attack_roll_type, RollType.NORMAL)
+        self.assertEqual(args.defense_roll_type, RollType.NORMAL)
+
+    def test_attack_command_rejects_non_positive_die_size(self) -> None:
+        """The attack command requires a positive damage die size."""
+        parser = build_parser()
+
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            parser.parse_args(["attack", "70", "55", "0", "1", "3"])
 
     def test_opposed_command_accepts_shared_runner_options(self) -> None:
         """Runner options are accepted after the subcommand."""
@@ -412,6 +455,60 @@ class CliMainTest(unittest.TestCase):
         runner.run.assert_called_once()
         self.assertIn("        mean=1.50", stdout.getvalue())
         self.assertIn("        std=0.35", stdout.getvalue())
+
+    @patch("myst_calculator.cli.app.sys.stdout", new_callable=io.StringIO)
+    @patch("myst_calculator.cli.app.Runner")
+    @patch("myst_calculator.cli.app.attack_action_sampler")
+    def test_main_runs_attack_command(
+        self,
+        attack_sampler: Mock,
+        runner_class: Mock,
+        stdout: io.StringIO,
+    ) -> None:
+        """The attack command passes every parameter to its sampler."""
+        stats = RunningStats()
+        stats.add(5.0)
+        runner = Mock()
+
+        def run(on_batch: object) -> RunningStats:
+            on_batch(stats)
+            return stats
+
+        runner.run.side_effect = run
+        runner_class.return_value = runner
+        sampler = Mock()
+        attack_sampler.return_value = sampler
+
+        result = main(
+            [
+                "attack",
+                "70",
+                "55",
+                "8",
+                "-1",
+                "3",
+                "--attack-type",
+                "ADVANTAGE",
+                "--defense-type",
+                "DISADVANTAGE",
+                "--precision",
+                "0.1",
+            ]
+        )
+
+        self.assertEqual(result, 0)
+        attack_sampler.assert_called_once_with(
+            70,
+            55,
+            8,
+            -1,
+            3,
+            RollType.ADVANTAGE,
+            RollType.DISADVANTAGE,
+        )
+        runner_class.assert_called_once()
+        self.assertIs(runner_class.call_args.args[0], sampler)
+        self.assertIn("        mean=5.0", stdout.getvalue())
 
 
 if __name__ == "__main__":

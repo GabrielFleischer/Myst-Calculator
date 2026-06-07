@@ -4,7 +4,7 @@ import tkinter as tk
 from tkinter import ttk
 
 from myst_calculator.ui.theme import configure_theme
-from myst_calculator.ui.widgets import OpposedRollTab
+from myst_calculator.ui.widgets import AttackTab, OpposedRollTab
 
 
 class MystCalculatorApp(tk.Tk):
@@ -17,6 +17,8 @@ class MystCalculatorApp(tk.Tk):
         self.title("Myst Calculator")
         self.geometry("1080x800")
         self.minsize(840, 640)
+        self.attributes("-fullscreen", True)
+        self.bind("<Escape>", self.exit_fullscreen)
 
         header = ttk.Frame(self)
         header.pack(fill="x", padx=24, pady=(20, 10))
@@ -36,12 +38,19 @@ class MystCalculatorApp(tk.Tk):
 
         self._opposed_tab = OpposedRollTab(notebook)
         notebook.add(self._opposed_tab, text="Opposed Roll")
+        self._attack_tab = AttackTab(notebook)
+        notebook.add(self._attack_tab, text="Attack")
         self.protocol("WM_DELETE_WINDOW", self.close)
 
     def close(self) -> None:
         """Cancel active work and close the desktop window."""
         self._opposed_tab.shutdown()
+        self._attack_tab.shutdown()
         self.destroy()
+
+    def exit_fullscreen(self, _event: tk.Event[tk.Misc] | None = None) -> None:
+        """Leave fullscreen mode while keeping the application open."""
+        self.attributes("-fullscreen", False)
 
 
 def launch() -> int:
